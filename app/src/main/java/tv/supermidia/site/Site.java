@@ -76,8 +76,8 @@ public class Site extends Activity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Received: " + intent.getAction());
-                overridePendingTransition(R.anim.fadein, R.anim.fadeout);
                 parent.finish();
+                overridePendingTransition(R.anim.fadein, R.anim.fadeout);
             }
         };
 
