@@ -52,6 +52,7 @@ public class Site extends Activity {
         webSettings = site.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
+        final Activity parent = this;
 
         /* only display on load is done */
         final Animation animationFadeIn = AnimationUtils.loadAnimation(this, R.anim.fadein);
@@ -63,9 +64,14 @@ public class Site extends Activity {
                 site.startAnimation(animationFadeIn);
                 site.setVisibility(View.VISIBLE);
             }
+            @Override
+            public void onReceivedError (WebView view, int errorCode, String description, String failingUrl) {
+                Log.d(TAG, "Cannot load URL: [" + errorCode + "]: " + description);
+                parent.finish();
+                overridePendingTransition(0, 0);
+            }
         });
 
-        final Activity parent = this;
         mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {

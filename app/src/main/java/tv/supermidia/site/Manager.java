@@ -141,8 +141,15 @@ public class Manager extends Service {
                             }
                             /* restart site every 2 hours  */
                             if (secondsRunning % (60 * 60 * 2) == 0) {
-                                /* kill site */
-                                stopSite();
+                                if (Util.checkURL(Site.SITE_URL_BASE)) {
+                                    /*
+                                     * kill site!
+                                     *
+                                     * BUT only stop if site is reachable,
+                                     *  I dislike bad internet gateways
+                                     */
+                                    stopSite();
+                                }
                             }
                             continue;
                         }
