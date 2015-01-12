@@ -41,7 +41,7 @@ public class Manager extends Service {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                Log.d(TAG, "Received: " + action);
+                //Log.d(TAG, "Received: " + action);
                 if (action.compareTo(Site.EVENT_UP) == 0 || action.compareTo(Site.EVENT_ALIVE) == 0) {
                     setSiteUp(true);
                 } else if (action.compareTo(Site.EVENT_DOWN) == 0) {
@@ -188,6 +188,9 @@ public class Manager extends Service {
     }
 
     public synchronized void setSiteUp(boolean siteUp) {
+        if (this.siteUp != siteUp) {
+            Log.d(TAG, "siteUp is now " + siteUp);
+        }
         this.siteUp = siteUp;
 
         if (siteUpCountdown != null) {
@@ -214,6 +217,9 @@ public class Manager extends Service {
     }
 
     public synchronized void setOfflineUp(boolean offlineUp) {
+        if (this.offlineUp != offlineUp) {
+            Log.d(TAG, "siteUp is now " + siteUp);
+        }
         this.offlineUp = offlineUp;
 
         if (offlineUpCountdown != null) {
