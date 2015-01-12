@@ -21,7 +21,8 @@
             android:name=".Site"
             android:label="@string/title_activity_site"
             android:launchMode="singleTop"
-            android:process=":site" >
+            android:process=":site"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" >
         </activity>
         <service
             android:name=".Manager"

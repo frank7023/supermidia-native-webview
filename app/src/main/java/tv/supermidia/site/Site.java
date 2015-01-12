@@ -8,8 +8,11 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 public class Site extends Activity {
 
@@ -24,6 +27,8 @@ public class Site extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        WebSettings webSettings;
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_site);
 
@@ -39,16 +44,29 @@ public class Site extends Activity {
 
         /* load the main webview */
         site = (WebView) findViewById(R.id.siteWebView);
-        WebSettings webSettings = site.getSettings();
+        webSettings = site.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
         site.loadUrl("http://www.supermidia.tv/");
+
+        /* only display on load is done */
+        final Animation animationFadeIn = AnimationUtils.loadAnimation(this, R.anim.fadein);
+        //final Animation animationFadeOut = AnimationUtils.loadAnimation(this, R.anim.fadeout);
+        site.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                /* animate */
+                site.startAnimation(animationFadeIn);
+                site.setVisibility(View.VISIBLE);
+            }
+        });
 
         final Activity parent = this;
         mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Received: " + intent.getAction());
+                overridePendingTransition(R.anim.fadein, R.anim.fadeout);
                 parent.finish();
             }
         };

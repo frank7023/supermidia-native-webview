@@ -96,6 +96,7 @@ public class Manager extends Service {
 
         Intent intent = new Intent(this, Site.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
     }
 
