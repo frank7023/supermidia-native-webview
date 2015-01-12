@@ -37,7 +37,7 @@ public class Site extends Activity {
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
         decorView.setSystemUiVisibility(uiOptions);
 
-        /* load webview */
+        /* load the main webview */
         site = (WebView) findViewById(R.id.siteWebView);
         WebSettings webSettings = site.getSettings();
         webSettings.setJavaScriptEnabled(true);

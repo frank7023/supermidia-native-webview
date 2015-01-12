@@ -138,7 +138,7 @@ public class Manager extends Service {
                             if (! isSiteUp() ) {
                                 startSite();
                             }
-                            /* restart site each 2 hours  */
+                            /* restart site every 2 hours  */
                             if (secondsRunning % (60 * 60 * 2) == 0) {
                                 /* kill site */
                                 stopSite();
