@@ -16,6 +16,8 @@ public class Manager extends Service {
     public static final String REQUEST_KILL_SITE = "tv.supermidia.site.request-kill-site";
     public static final String EVENT_UP = "tv.supermidia.site.event-manager-up";
     public static final String EVENT_DOWN = "tv.supermidia.site.event-manager-down";
+    public static final int REFRESH_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours  */
+
     private WifiManager mWifiManager;
     private Thread mThreadRefresh;
     private BroadcastReceiver mReceiver;
@@ -139,8 +141,7 @@ public class Manager extends Service {
                             if (! isSiteUp() ) {
                                 startSite();
                             }
-                            /* restart site every 2 hours  */
-                            if (secondsRunning % (60 * 60 * 2) == 0) {
+                            if (secondsRunning % REFRESH_SECONDS == 0) {
                                 if (Util.checkURL(Site.SITE_URL_BASE)) {
                                     /*
                                      * kill site!

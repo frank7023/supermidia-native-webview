@@ -25,6 +25,7 @@ public class Site extends Activity {
     public static final String EVENT_UP = "tv.supermidia.site.event-site-up";
     public static final String SITE_URL_BASE = "http://www.supermidia.tv/";
     public static final String PING_URL_BASE = "http://service.supermidia.tv/service/salva/";
+    public static final int PING_SECONDS = 15 * 60; /* ping every 15 minutes */
 
     private WebView site;
     private BroadcastReceiver mReceiver;
@@ -222,8 +223,7 @@ public class Site extends Activity {
                             String status = Util.checkURL(url)?"online":"offline";
                             Log.d(TAG, "Ping from url: '" + url + "': " + status);
                         }
-                        /* ping every 15 minutes */
-                        Thread.sleep(15 * 60 * 1000);
+                        Thread.sleep(PING_SECONDS * 1000);
                     }
                 } catch (InterruptedException e) {
                 }
