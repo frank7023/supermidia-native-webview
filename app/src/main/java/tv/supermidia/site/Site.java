@@ -24,10 +24,12 @@ public class Site extends Activity {
     public static final String EVENT_DOWN = "tv.supermidia.site.event-site-down";
     public static final String EVENT_UP = "tv.supermidia.site.event-site-up";
     public static final String SITE_URL_BASE = "http://www.supermidia.tv/";
+    public static final String PING_URL_BASE = "http://service.supermidia.tv/service/salva/";
 
     private WebView site;
     private BroadcastReceiver mReceiver;
     private Thread aliveThread;
+    private Thread pingThread;
     private Preferences pref;
 
     @Override
@@ -126,6 +128,7 @@ public class Site extends Activity {
 
         sendBroadcast(new Intent(EVENT_UP));
         startAliveThread();
+        startPingThread();
     }
 
 
@@ -159,6 +162,7 @@ public class Site extends Activity {
         super.onDestroy();
         sendBroadcast(new Intent(EVENT_DOWN));
         stopAliveThread();
+        stopPingThread();
         System.exit(0);
     }
 
@@ -199,7 +203,46 @@ public class Site extends Activity {
             } catch (InterruptedException e) {
             }
         }
-
     }
 
+    private void startPingThread() {
+        if (pingThread != null) {
+            return;
+        }
+        pingThread = new Thread() {
+
+            @Override
+            public void run() {
+                try {
+                    Log.d(TAG, "Ping thread started");
+                    while (!isInterrupted()) {
+                        String name;
+                        if (pref != null && (name = pref.getName()) != null) {
+                            String url = PING_URL_BASE + name;
+                            String status = Util.checkURL(url)?"online":"offline";
+                            Log.d(TAG, "Ping from url: '" + url + "': " + status);
+                        }
+                        /* ping every 15 minutes */
+                        Thread.sleep(15 * 60 * 1000);
+                    }
+                } catch (InterruptedException e) {
+                }
+            }
+        };
+        pingThread.start();
+    }
+
+    private void stopPingThread() {
+        if (pingThread == null) {
+            return;
+        }
+        pingThread.interrupt();
+        while (pingThread != null) {
+            try {
+                pingThread.join();
+                pingThread = null;
+            } catch (InterruptedException e) {
+            }
+        }
+    }
 }
