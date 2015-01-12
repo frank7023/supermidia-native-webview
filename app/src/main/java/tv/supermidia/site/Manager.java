@@ -134,7 +134,7 @@ public class Manager extends Service {
                         /* limit it to 24 hours */
                         secondsRunning = secondsRunning == 24 * 60 * 60?0:secondsRunning;
                         secondsRunning++;
-                        /* finish the site activity and start it again*/
+                        /* finish the site activity and start it again */
                         if (hasWifi()) {
                             if (! isSiteUp() ) {
                                 startSite();
@@ -160,7 +160,7 @@ public class Manager extends Service {
                             continue;
                         }
 
-                        /* no wifi and no site, :-( */
+                        /* God doesn't like us, no site too :-( */
                         if (! isOfflineUp()) {
                             startOffline();
                         }
