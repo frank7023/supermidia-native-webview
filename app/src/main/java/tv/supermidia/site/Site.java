@@ -1,8 +1,10 @@
 package tv.supermidia.site;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -13,6 +15,7 @@ import android.view.animation.AnimationUtils;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.EditText;
 
 public class Site extends Activity {
 
@@ -20,10 +23,12 @@ public class Site extends Activity {
     public static final String EVENT_ALIVE = "tv.supermidia.site.event-site-alive";
     public static final String EVENT_DOWN = "tv.supermidia.site.event-site-down";
     public static final String EVENT_UP = "tv.supermidia.site.event-site-up";
+    public static final String SITE_URL_BASE = "http://www.supermidia.tv/";
 
     private WebView site;
     private BroadcastReceiver mReceiver;
     private Thread aliveThread;
+    private Preferences pref;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +52,6 @@ public class Site extends Activity {
         webSettings = site.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
-        site.loadUrl("http://www.supermidia.tv/");
 
         /* only display on load is done */
         final Animation animationFadeIn = AnimationUtils.loadAnimation(this, R.anim.fadein);
@@ -71,8 +75,57 @@ public class Site extends Activity {
             }
         };
 
+        /* discovery my name */
+        pref = new Preferences(this);
+        final String name =  pref.getName();
+        if (name == null) {
+            /* getting the local */
+            AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+            //alert.setTitle("Local");
+            alert.setMessage("Local?");
+
+            // Set an EditText view to get user input
+            final EditText input = new EditText(this);
+            alert.setView(input);
+
+            alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    final String value = input.getText().toString();
+                    // Do something with value!
+                    pref.setName(value);
+
+                    /* load URL */
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            String url = SITE_URL_BASE + value;
+                            loadURL(url);
+                        }
+                    });
+                }
+            });
+
+            alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    // Canceled.
+                }
+            });
+
+            alert.show();
+        } else {
+            String url = SITE_URL_BASE + name;
+            loadURL(url);
+        }
+
         sendBroadcast(new Intent(EVENT_UP));
         startAliveThread();
+    }
+
+
+    public void loadURL(String url) {
+        Log.d(TAG, "Opening url: " + url);
+        site.loadUrl(url);
     }
 
     @Override
