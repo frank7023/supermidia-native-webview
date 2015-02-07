@@ -73,6 +73,7 @@ public class Manager extends Service {
             registerReceiver(mReceiver, new IntentFilter(Offline.EVENT_DOWN));
         }
         return START_STICKY;
+        //return START_NOT_STICKY;
     }
 
     @Override
