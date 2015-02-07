@@ -9,7 +9,6 @@ import android.net.wifi.WifiManager;
 import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 public class Manager extends Service {
     public static final String TAG = "SUPERMIDIA.TV:Manager";
@@ -60,7 +59,7 @@ public class Manager extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
-        Toast.makeText(this, TAG + " service starting", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Manager service starting");
         sendBroadcast(new Intent(EVENT_UP));
 
         if (mReceiver != null) {
@@ -85,7 +84,7 @@ public class Manager extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Toast.makeText(this, TAG + " service starting", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Manage service stopping");
         stopThreads();
         sendBroadcast(new Intent(EVENT_DOWN));
 
