@@ -8,6 +8,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
@@ -41,13 +42,35 @@ public class Site extends Activity {
         setContentView(R.layout.activity_site);
 
         /* make it fullscreen */
-        View decorView = getWindow().getDecorView();
-        int uiOptions = View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+        final View decorView = getWindow().getDecorView();
+        final int uiOptions = View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+
+        /* listen for fullscreen changes */
+        decorView.setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+            @Override
+            public void onSystemUiVisibilityChange(int visibility) {
+                if ((visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
+                    /* exit fullscreen */
+                    Log.d(TAG, "Not in fullscreen");
+                    Handler h = new Handler();
+                    h.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.d(TAG, "Try to enter fullscreen again");
+                            decorView.setSystemUiVisibility(uiOptions);
+                        }
+                    }, 2000);
+                } else {
+                    Log.d(TAG, "Fullscreen");
+                }
+            }
+        });
+        /* fullscreen at start */
         decorView.setSystemUiVisibility(uiOptions);
 
         /* load the main webview */
