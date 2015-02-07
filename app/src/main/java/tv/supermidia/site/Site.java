@@ -54,6 +54,7 @@ public class Site extends Activity {
         site = (WebView) findViewById(R.id.siteWebView);
         webSettings = site.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
         webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
         final Activity parent = this;
 
