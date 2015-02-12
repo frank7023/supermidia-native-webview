@@ -69,46 +69,4 @@ public class Offline extends Activity {
         sendBroadcast(new Intent(EVENT_DOWN));
         System.exit(0);
     }
-
-    private void startAliveThread() {
-        
-        if (aliveThread != null) {
-            return;
-        }
-        aliveThread = new Thread() {
-
-            @Override
-            public void run() {
-                try {
-                    while (!isInterrupted()) {
-                        Thread.sleep(1000);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                sendBroadcast(new Intent(EVENT_ALIVE));
-                            }
-                        });
-                    }
-                } catch (InterruptedException e) {
-                }
-            }
-        };
-        aliveThread.start();
-    }
-
-    private void stopAliveThread() {
-        if (aliveThread == null) {
-            return;
-        }
-        aliveThread.interrupt();
-        while (aliveThread != null) {
-            try {
-                aliveThread.join();
-                aliveThread = null;
-            } catch (InterruptedException e) {
-            }
-        }
-
-    }
-
 }
