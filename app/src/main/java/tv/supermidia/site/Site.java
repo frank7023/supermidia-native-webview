@@ -17,6 +17,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.TextView;
 
 public class Site extends Activity {
 
@@ -157,6 +158,9 @@ public class Site extends Activity {
     private void onHasLocal(String local) {
         String url = SITE_URL_BASE + local;
         loadURL(url);
+
+        TextView placeInfo = (TextView) findViewById(R.id.placeInfo);
+        placeInfo.setText("Local: " + local);
     }
 
     public void loadURL(String url) {
