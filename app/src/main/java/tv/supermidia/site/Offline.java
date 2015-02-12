@@ -53,14 +53,11 @@ public class Offline extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        //sendBroadcast(new Intent(EVENT_UP));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        //sendBroadcast(new Intent(EVENT_DOWN));
-        //finish();
     }
 
     @Override

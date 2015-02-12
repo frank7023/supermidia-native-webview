@@ -116,17 +116,16 @@ public class Site extends Activity {
             /* getting the local */
             AlertDialog.Builder alert = new AlertDialog.Builder(this);
 
-            //alert.setTitle("Local");
             alert.setMessage("Local?");
 
-            // Set an EditText view to get user input
+            /* Set an EditText view to get user input */
             final EditText input = new EditText(this);
             alert.setView(input);
 
             alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int whichButton) {
                     final String value = input.getText().toString();
-                    // Do something with value!
+                    /* Do something with value! */
                     pref.setName(value);
 
                     /* load URL */
@@ -141,7 +140,7 @@ public class Site extends Activity {
 
             alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int whichButton) {
-                    // Canceled.
+                    /* Canceled. */
                 }
             });
 
@@ -184,9 +183,7 @@ public class Site extends Activity {
         if (mReceiver != null) {
             unregisterReceiver(mReceiver);
         }
-        //finish();
     }
-
 
     @Override
     public void onDestroy() {

@@ -37,7 +37,6 @@ public class Manager extends Service {
         super.onCreate();
 
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        final Context parent = this;
         mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -115,7 +114,7 @@ public class Manager extends Service {
 
     private boolean hasWifi() {
         if (mWifiManager == null) {
-            /* unknow state, assume offline */
+            /* unknown state, assume offline */
             return false;
         }
         return mWifiManager.isWifiEnabled();
@@ -124,7 +123,6 @@ public class Manager extends Service {
         if (mThreadRefresh != null) {
             return;
         }
-        final Context parent = this;
         mThreadRefresh = new Thread() {
             @Override
             public void run() {
@@ -174,8 +172,6 @@ public class Manager extends Service {
         mThreadRefresh.start();
     }
 
-
-
     private void stopThreads() {
         if (mThreadRefresh == null) {
             return;
@@ -190,7 +186,6 @@ public class Manager extends Service {
         }
 
     }
-
 
     public synchronized boolean isSiteUp() {
         return siteUp;
