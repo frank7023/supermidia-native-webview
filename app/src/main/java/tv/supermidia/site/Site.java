@@ -132,8 +132,7 @@ public class Site extends Activity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            String url = SITE_URL_BASE + value;
-                            loadURL(url);
+                            onHasLocal(value);
                         }
                     });
                 }
@@ -147,8 +146,7 @@ public class Site extends Activity {
 
             alert.show();
         } else {
-            String url = SITE_URL_BASE + name;
-            loadURL(url);
+            onHasLocal(name);
         }
 
         sendBroadcast(new Intent(EVENT_UP));
@@ -156,6 +154,10 @@ public class Site extends Activity {
         startPingThread();
     }
 
+    private void onHasLocal(String local) {
+        String url = SITE_URL_BASE + local;
+        loadURL(url);
+    }
 
     public void loadURL(String url) {
         Log.d(TAG, "Opening url: " + url);
