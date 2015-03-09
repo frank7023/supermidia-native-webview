@@ -48,24 +48,24 @@ public class Offline extends Activity {
         startService(intent);
 
         sendBroadcast(new Intent(EVENT_UP));
-        startAliveThread();
 
     }
     @Override
     protected void onResume() {
         super.onResume();
+        startAliveThread();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        stopAliveThread();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         sendBroadcast(new Intent(EVENT_DOWN));
-        stopAliveThread();
     }
 
     private void startAliveThread() {

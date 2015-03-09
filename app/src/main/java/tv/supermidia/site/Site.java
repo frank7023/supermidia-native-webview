@@ -110,8 +110,7 @@ public class Site extends Activity {
         };
 
         sendBroadcast(new Intent(EVENT_UP));
-        startAliveThread();
-        startPingThread();
+
 
         /* discovery my name */
         pref = new Preferences(this);
@@ -206,6 +205,9 @@ public class Site extends Activity {
             registerReceiver(mReceiver, new IntentFilter(Manager.REQUEST_KILL_SITE));
         }
 
+        startAliveThread();
+        startPingThread();
+
     }
 
     @Override
@@ -215,14 +217,14 @@ public class Site extends Activity {
         if (mReceiver != null) {
             unregisterReceiver(mReceiver);
         }
+        stopAliveThread();
+        stopPingThread();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         sendBroadcast(new Intent(EVENT_DOWN));
-        stopAliveThread();
-        stopPingThread();
     }
 
     private void startAliveThread() {
