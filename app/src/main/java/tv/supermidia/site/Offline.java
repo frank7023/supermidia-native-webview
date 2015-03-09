@@ -48,6 +48,7 @@ public class Offline extends Activity {
         startService(intent);
 
         sendBroadcast(new Intent(EVENT_UP));
+        startAliveThread();
 
     }
     @Override
@@ -64,5 +65,45 @@ public class Offline extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         sendBroadcast(new Intent(EVENT_DOWN));
+        stopAliveThread();
+    }
+
+    private void startAliveThread() {
+        if (aliveThread != null) {
+            return;
+        }
+        aliveThread = new Thread() {
+
+            @Override
+            public void run() {
+                try {
+                    while (!isInterrupted()) {
+                        Thread.sleep(1000);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                sendBroadcast(new Intent(EVENT_ALIVE));
+                            }
+                        });
+                    }
+                } catch (InterruptedException e) {
+                }
+            }
+        };
+        aliveThread.start();
+    }
+
+    private void stopAliveThread() {
+        if (aliveThread == null) {
+            return;
+        }
+        aliveThread.interrupt();
+        while (aliveThread != null) {
+            try {
+                aliveThread.join();
+                aliveThread = null;
+            } catch (InterruptedException e) {
+            }
+        }
     }
 }
