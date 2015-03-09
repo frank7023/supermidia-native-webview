@@ -16,6 +16,7 @@ public class Manager extends Service {
     public static final String EVENT_UP = "tv.supermidia.site.event-manager-up";
     public static final String EVENT_DOWN = "tv.supermidia.site.event-manager-down";
     public static final int REFRESH_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours  */
+    public static final int REFRESH_CHECK_SECONDS = 5;
 
     private WifiManager mWifiManager;
     private Thread mThreadRefresh;
@@ -127,41 +128,36 @@ public class Manager extends Service {
             @Override
             public void run() {
                 long secondsRunning = 0;
+
                 try {
                     Log.d(TAG, "thread  for refresh is started");
                     while (!isInterrupted()) {
-                        Thread.sleep(1000);
+                        Thread.sleep(1000 * REFRESH_CHECK_SECONDS);
                         /* limit it to 24 hours */
-                        secondsRunning = secondsRunning == 24 * 60 * 60?0:secondsRunning;
-                        secondsRunning++;
+                        secondsRunning = secondsRunning >= 24 * 60 * 60?0:secondsRunning;
+                        secondsRunning += REFRESH_CHECK_SECONDS;
                         /* finish the site activity and start it again */
-                        if (hasWifi()) {
-                            if (! isSiteUp() ) {
-                                startSite();
+
+                        if (secondsRunning % REFRESH_SECONDS < REFRESH_CHECK_SECONDS) {
+                            if (isSiteUp() && Util.checkURL(Site.SITE_URL_BASE)) {
+                                /* stop only if there's internet */
+                                stopSite();
+                                continue;
                             }
-                            if (secondsRunning % REFRESH_SECONDS == 0) {
-                                if (Util.checkURL(Site.SITE_URL_BASE)) {
-                                    /*
-                                     * kill site!
-                                     *
-                                     * BUT only stop if site is reachable,
-                                     *  I dislike bad internet gateways
-                                     */
-                                    stopSite();
-                                }
-                            }
-                            continue;
                         }
 
-                        /* has no wifi */
+                        /* no reload */
                         if (isSiteUp()) {
                             /* continue to show site */
                             continue;
-                        }
-
-                        /* God doesn't like us, no site too :-( */
-                        if (! isOfflineUp()) {
-                            startOffline();
+                        } else {
+                            /* God doesn't like us, start site on offline mode */
+                            if (!isOfflineUp()) {
+                                /* first offline */
+                                startOffline();
+                                continue;
+                            }
+                            startSite();
                         }
 
                     }
