@@ -140,10 +140,13 @@ public class Manager extends Service {
                         /* finish the site activity and start it again */
 
                         if (secondsRunning % REFRESH_SECONDS < REFRESH_CHECK_SECONDS) {
-                            if (isSiteUp()) {
+                            Log.d(TAG, "It's time to refresh");
+                            if (isSiteUp() && Util.checkURL(Site.SITE_URL_BASE)) {
+                                /* kill only without internet */
                                 stopSite();
                                 continue;
                             }
+                            Log.d(TAG, "Don't doing the refresh");
                         }
 
                         /* no reload */
