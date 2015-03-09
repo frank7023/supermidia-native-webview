@@ -109,9 +109,14 @@ public class Site extends Activity {
             }
         };
 
+        sendBroadcast(new Intent(EVENT_UP));
+        startAliveThread();
+        startPingThread();
+
         /* discovery my name */
         pref = new Preferences(this);
         final String name =  pref.getName();
+
         if (name == null) {
             /* getting the local */
             AlertDialog.Builder alert = new AlertDialog.Builder(this);
@@ -148,10 +153,6 @@ public class Site extends Activity {
         } else {
             onHasLocal(name);
         }
-
-        sendBroadcast(new Intent(EVENT_UP));
-        startAliveThread();
-        startPingThread();
     }
 
     private void onHasLocal(String local) {
