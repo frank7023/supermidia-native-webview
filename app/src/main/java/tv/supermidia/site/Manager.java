@@ -218,7 +218,7 @@ public class Manager extends Service {
 
     public synchronized void setOfflineUp(boolean offlineUp) {
         if (this.offlineUp != offlineUp) {
-            Log.d(TAG, "siteUp is now " + siteUp);
+            Log.d(TAG, "offlineUp is now " + offlineUp);
         }
         this.offlineUp = offlineUp;
 
