@@ -155,11 +155,14 @@ public class Site extends Activity {
     }
 
     private void onHasLocal(String local) {
+        if (local == null) {
+            return;
+        }
         String url = SITE_URL_BASE + local;
         loadURL(url);
 
         TextView placeInfo = (TextView) findViewById(R.id.placeInfo);
-        placeInfo.setText("Local: " + local);
+        placeInfo.setText(local);
     }
 
     public void loadURL(String url) {
