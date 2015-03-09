@@ -140,8 +140,7 @@ public class Manager extends Service {
                         /* finish the site activity and start it again */
 
                         if (secondsRunning % REFRESH_SECONDS < REFRESH_CHECK_SECONDS) {
-                            if (isSiteUp() && Util.checkURL(Site.SITE_URL_BASE)) {
-                                /* stop only if there's internet */
+                            if (isSiteUp()) {
                                 stopSite();
                                 continue;
                             }
