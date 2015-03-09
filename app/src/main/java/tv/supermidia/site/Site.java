@@ -165,9 +165,37 @@ public class Site extends Activity {
         placeInfo.setText(local);
     }
 
-    public void loadURL(String url) {
+    public void loadURL(final String url) {
         Log.d(TAG, "Opening url: " + url);
-        site.loadUrl(url);
+
+        Thread checkURL = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final boolean hasInternet;
+                if (Util.checkURL(SITE_URL_BASE)) {
+                    hasInternet = true;
+                } else {
+                    hasInternet = false;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        WebSettings webSettings = site.getSettings();
+
+                        if (hasInternet) {
+                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                        } else {
+                            /* no internet, use cache */
+                            Log.d(TAG, "Internet seems horrible, use cache only");
+                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ONLY);
+                        }
+                        site.loadUrl(url);
+                    }
+                });
+            }
+        });
+
+        checkURL.start();
     }
 
     @Override
