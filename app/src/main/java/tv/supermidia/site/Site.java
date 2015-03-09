@@ -223,7 +223,6 @@ public class Site extends Activity {
         sendBroadcast(new Intent(EVENT_DOWN));
         stopAliveThread();
         stopPingThread();
-        System.exit(0);
     }
 
     private void startAliveThread() {

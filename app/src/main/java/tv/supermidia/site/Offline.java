@@ -64,6 +64,5 @@ public class Offline extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         sendBroadcast(new Intent(EVENT_DOWN));
-        System.exit(0);
     }
 }
