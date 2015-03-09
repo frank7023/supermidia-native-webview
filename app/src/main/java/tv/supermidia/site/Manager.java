@@ -16,6 +16,7 @@ public class Manager extends Service {
     public static final String EVENT_UP = "tv.supermidia.site.event-manager-up";
     public static final String EVENT_DOWN = "tv.supermidia.site.event-manager-down";
     public static final int REFRESH_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours  */
+    //public static final int REFRESH_SECONDS = 60 ; /* refresh site every minute  */
     public static final int REFRESH_CHECK_SECONDS = 5;
 
     private WifiManager mWifiManager;
