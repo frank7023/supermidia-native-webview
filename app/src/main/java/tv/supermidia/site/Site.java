@@ -183,11 +183,11 @@ public class Site extends Activity {
                         WebSettings webSettings = site.getSettings();
 
                         if (hasInternet) {
-                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                            webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
                         } else {
                             /* no internet, use cache */
                             Log.d(TAG, "Internet seems horrible, use cache only");
-                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ONLY);
+                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
                         }
                         site.loadUrl(url);
                     }
