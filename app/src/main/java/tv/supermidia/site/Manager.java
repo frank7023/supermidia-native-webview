@@ -141,8 +141,8 @@ public class Manager extends Service {
 
                         if (secondsRunning % REFRESH_SECONDS < REFRESH_CHECK_SECONDS) {
                             Log.d(TAG, "It's time to refresh");
-                            if (isSiteUp() && Util.checkURL(Site.SITE_URL_BASE)) {
-                                /* kill only without internet */
+                            if (isSiteUp()) {
+                                /* kill with or without internet */
                                 stopSite();
                                 continue;
                             }
