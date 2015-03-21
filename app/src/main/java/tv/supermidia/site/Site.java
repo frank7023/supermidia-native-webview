@@ -183,6 +183,7 @@ public class Site extends Activity {
                         WebSettings webSettings = site.getSettings();
 
                         if (hasInternet) {
+                            Log.d(TAG, "Internet seems good, using default settings");
                             webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
                         } else {
                             /* no internet, use cache */
