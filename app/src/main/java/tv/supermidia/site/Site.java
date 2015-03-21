@@ -65,7 +65,7 @@ public class Site extends Activity {
                             Log.d(TAG, "Try to enter fullscreen again");
                             decorView.setSystemUiVisibility(uiOptions);
                         }
-                    }, 2000);
+                    }, 10000);
                 } else {
                     Log.d(TAG, "Fullscreen");
                 }
