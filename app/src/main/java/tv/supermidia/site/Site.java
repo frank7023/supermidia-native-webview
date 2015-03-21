@@ -172,7 +172,7 @@ public class Site extends Activity {
             @Override
             public void run() {
                 final boolean hasInternet;
-                if (Util.checkURL(SITE_URL_BASE)) {
+                if (Util.checkURL(SITE_URL_BASE, 10000)) {
                     hasInternet = true;
                 } else {
                     hasInternet = false;
@@ -185,10 +185,12 @@ public class Site extends Activity {
                         if (hasInternet) {
                             Log.d(TAG, "Internet seems good, using default settings");
                             webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+                            webSettings.setBlockNetworkLoads(false);
                         } else {
                             /* no internet, use cache */
                             Log.d(TAG, "Internet seems horrible, use cache only");
                             webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                            webSettings.setBlockNetworkLoads(true);
                         }
                         site.loadUrl(url);
                     }
