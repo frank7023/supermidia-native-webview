@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -54,6 +55,19 @@ public class Offline extends Activity {
     protected void onResume() {
         super.onResume();
         startAliveThread();
+    }
+
+    @Override
+    public void onBackPressed() {
+        Intent intent = new Intent(this, Manager.class);
+        stopService(intent);
+        Handler h = new Handler();
+        h.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                finish();
+            }
+        }, 1000);
     }
 
     @Override

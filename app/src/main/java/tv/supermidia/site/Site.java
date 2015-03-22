@@ -202,6 +202,19 @@ public class Site extends Activity {
     }
 
     @Override
+    public void onBackPressed() {
+        Intent intent = new Intent(this, Manager.class);
+        stopService(intent);
+        Handler h = new Handler();
+        h.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                finish();
+            }
+        }, 1000);
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         if (mReceiver != null) {
