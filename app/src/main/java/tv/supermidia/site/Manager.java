@@ -12,11 +12,12 @@ import android.util.Log;
 
 public class Manager extends Service {
     public static final String TAG = "SUPERMIDIA.TV:Manager";
-    public static final String REQUEST_KILL_SITE = "tv.supermidia.site.request-kill-site";
+
     public static final String EVENT_UP = "tv.supermidia.site.event-manager-up";
     public static final String EVENT_DOWN = "tv.supermidia.site.event-manager-down";
-    public static final int REFRESH_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours  */
-    //public static final int REFRESH_SECONDS = 60 ; /* refresh site every minute  */
+    public static final int REFRESH_ONLINE_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours (if online)  */
+    public static final int REFRESH_CACHE_SECONDS = 60 * 60 * 6; /* refresh site every 6 hours (if cache) */
+    public static final int REFRESH_OFFLINE_SECONDS = 60 * 5; /* refresh site every 5 minutes (if offline) */
     public static final int REFRESH_CHECK_SECONDS = 5;
 
     private WifiManager mWifiManager;
@@ -25,9 +26,11 @@ public class Manager extends Service {
 
     private boolean siteUp = false;
 
-    private boolean offlineUp = false;
+    private boolean siteOffline = false;
+    private boolean siteOnline = false;
+    private boolean siteCache = false;
+
     private CountDownTimer siteUpCountdown;
-    private CountDownTimer offlineUpCountdown;
 
     public Manager() {
         super();
@@ -48,15 +51,19 @@ public class Manager extends Service {
                     setSiteUp(true);
                 } else if (action.compareTo(Site.EVENT_DOWN) == 0) {
                     setSiteUp(false);
-                }else if (action.compareTo(Offline.EVENT_UP) == 0 || action.compareTo(Offline.EVENT_ALIVE) == 0) {
-                    setOfflineUp(true);
-                }  else if (action.compareTo(Offline.EVENT_DOWN) == 0) {
-                    setOfflineUp(false);
+                } else if (action.compareTo(Site.EVENT_CACHE) == 0) {
+                    setSiteCache();
+                } else if (action.compareTo(Site.EVENT_OFFLINE) == 0) {
+                    setSiteOffline();
+                } else if (action.compareTo(Site.EVENT_ONLINE) == 0) {
+                    setSiteOnline();
                 }
+
             }
         };
         startThreads();
     }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
@@ -67,10 +74,10 @@ public class Manager extends Service {
             registerReceiver(mReceiver, new IntentFilter(Site.EVENT_ALIVE));
             registerReceiver(mReceiver, new IntentFilter(Site.EVENT_UP));
             registerReceiver(mReceiver, new IntentFilter(Site.EVENT_DOWN));
+            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_OFFLINE));
+            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_ONLINE));
+            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_CACHE));
 
-            registerReceiver(mReceiver, new IntentFilter(Offline.EVENT_ALIVE));
-            registerReceiver(mReceiver, new IntentFilter(Offline.EVENT_UP));
-            registerReceiver(mReceiver, new IntentFilter(Offline.EVENT_DOWN));
         }
         return START_STICKY;
         //return START_NOT_STICKY;
@@ -104,14 +111,8 @@ public class Manager extends Service {
     }
 
     private void stopSite() {
-        Intent i = new Intent(REQUEST_KILL_SITE);
+        Intent i = new Intent(Site.KILL_SITE);
         sendBroadcast(i);
-    }
-
-    private void startOffline() {
-        Intent intent = new Intent(this, Offline.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
     }
 
     private boolean hasWifi() {
@@ -121,6 +122,7 @@ public class Manager extends Service {
         }
         return mWifiManager.isWifiEnabled();
     }
+
     private void startThreads() {
         if (mThreadRefresh != null) {
             return;
@@ -135,36 +137,41 @@ public class Manager extends Service {
                     while (!isInterrupted()) {
                         Thread.sleep(1000 * REFRESH_CHECK_SECONDS);
                         /* limit it to 24 hours */
-                        secondsRunning = secondsRunning >= 24 * 60 * 60?0:secondsRunning;
+                        secondsRunning = secondsRunning >= 24 * 60 * 60 ? 0 : secondsRunning;
                         secondsRunning += REFRESH_CHECK_SECONDS;
                         /* finish the site activity and start it again */
-
-                        if (secondsRunning % REFRESH_SECONDS < REFRESH_CHECK_SECONDS) {
-                            Log.d(TAG, "It's time to refresh");
-                            if (isSiteUp()) {
-                                /* kill with or without internet */
+                        boolean refresh = false;
+                        if (isSiteUp()) {
+                            if (isSiteOffline() &&
+                                 secondsRunning % REFRESH_OFFLINE_SECONDS < REFRESH_CHECK_SECONDS) {
+                                refresh = true;
+                            }
+                            if (isSiteOnline() &&
+                                    secondsRunning % REFRESH_ONLINE_SECONDS < REFRESH_CHECK_SECONDS) {
+                                refresh = true;
+                            }
+                            if (isSiteOffline() &&
+                                    secondsRunning % REFRESH_OFFLINE_SECONDS < REFRESH_CHECK_SECONDS) {
+                                refresh = true;
+                            }
+                            if (refresh) {
+                                Log.d(TAG, "It's time to refresh, so let's stop site");
                                 stopSite();
                                 continue;
                             }
-                            Log.d(TAG, "Don't doing the refresh");
                         }
 
                         /* no reload */
                         if (isSiteUp()) {
                             /* continue to show site */
                             continue;
-                        } else {
-                            /* God doesn't like us, start site on offline mode */
-                            if (!isOfflineUp()) {
-                                /* first offline */
-                                startOffline();
-                                continue;
-                            }
-                            startSite();
                         }
+                        Log.d(TAG, "Site is not running, starting it");
+                        startSite();
 
                     }
-                } catch(InterruptedException e){}
+                } catch (InterruptedException e) {
+                }
                 Log.d(TAG, "thread for refresh was stopped");
             }
         };
@@ -203,46 +210,50 @@ public class Manager extends Service {
 
         if (siteUp == true) {
             siteUpCountdown = new CountDownTimer(5000, 5000) {
-                    public void onTick(long millisUntilFinished) {
-                    }
-
-                    public void onFinish() {
-                        siteUpCountdown = null;
-                        setSiteUp(false);
-                    }
-                };
-            siteUpCountdown.start();
-        }
-    }
-
-    public synchronized boolean isOfflineUp() {
-        return offlineUp;
-    }
-
-    public synchronized void setOfflineUp(boolean offlineUp) {
-        if (this.offlineUp != offlineUp) {
-            Log.d(TAG, "offlineUp is now " + offlineUp);
-        }
-        this.offlineUp = offlineUp;
-
-        if (offlineUpCountdown != null) {
-            offlineUpCountdown.cancel();
-            offlineUpCountdown = null;
-        }
-
-        if (offlineUp == true) {
-            offlineUpCountdown = new CountDownTimer(5000, 5000) {
                 public void onTick(long millisUntilFinished) {
                 }
 
                 public void onFinish() {
-                    offlineUpCountdown = null;
-                    setOfflineUp(false);
+                    siteUpCountdown = null;
+                    setSiteUp(false);
                 }
             };
-            offlineUpCountdown.start();
+            siteUpCountdown.start();
         }
-
     }
 
+    public synchronized boolean isSiteOffline() {
+        return siteOffline;
+    }
+
+    public synchronized void setSiteOffline() {
+        Log.d(TAG, "siteOffline is now true");
+        this.siteOffline = true;
+        this.siteOnline = false;
+        this.siteCache = false;
+    }
+
+    public synchronized boolean isSiteOnline() {
+        return siteOnline;
+    }
+
+    public synchronized void setSiteOnline() {
+        Log.d(TAG, "siteOnline is now true");
+
+        this.siteOffline = false;
+        this.siteOnline = true;
+        this.siteCache = false;
+    }
+
+    public synchronized boolean isSiteCache() {
+        return siteCache;
+    }
+
+    public synchronized void setSiteCache() {
+        Log.d(TAG, "siteCache is now true");
+
+        this.siteOffline = false;
+        this.siteOnline = false;
+        this.siteCache = true;
+    }
 }

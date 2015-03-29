@@ -23,23 +23,36 @@ public class Site extends Activity {
 
     private static final String TAG = "SUPERMIDIA.TV:Site";
     public static final String EVENT_ALIVE = "tv.supermidia.site.event-site-alive";
+    public static final String EVENT_OFFLINE = "tv.supermidia.site.event-site-offline";
+    public static final String EVENT_CACHE = "tv.supermidia.site.event-site-cache";
+    public static final String EVENT_ONLINE = "tv.supermidia.site.event-site-online";
     public static final String EVENT_DOWN = "tv.supermidia.site.event-site-down";
     public static final String EVENT_UP = "tv.supermidia.site.event-site-up";
+    public static final String KILL_SITE = "tv.supermidia.site.request-kill-site";
     public static final String SITE_URL_BASE = "http://www.supermidia.tv/";
     public static final String PING_URL_BASE = "http://service.supermidia.tv/service/salva/";
     public static final int PING_SECONDS = 15 * 60; /* ping every 15 minutes */
+    public static final String URL_OFFLINE = "file:///android_asset/www/offline.html";
 
     private WebView site;
     private BroadcastReceiver mReceiver;
     private Thread aliveThread;
     private Thread pingThread;
     private Preferences pref;
+    private boolean hasInternet = false;
+    private TextView placeInfo;
+    private String local;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         WebSettings webSettings;
 
         super.onCreate(savedInstanceState);
+
+        /* start my manager service */
+        Intent intent = new Intent(this, Manager.class);
+        startService(intent);
+
         setContentView(R.layout.activity_site);
 
         /* make it fullscreen */
@@ -74,12 +87,16 @@ public class Site extends Activity {
         /* fullscreen at start */
         decorView.setSystemUiVisibility(uiOptions);
 
+        placeInfo = (TextView) findViewById(R.id.placeInfo);
+
         /* load the main webview */
         site = (WebView) findViewById(R.id.siteWebView);
         webSettings = site.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
         webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
+
+        /* load offline */
 
         /* only display on load is done */
         final Animation animationFadeIn = AnimationUtils.loadAnimation(this, R.anim.fadein);
@@ -90,12 +107,28 @@ public class Site extends Activity {
                 /* animate */
                 site.startAnimation(animationFadeIn);
                 site.setVisibility(View.VISIBLE);
+                if (site.getUrl().contains(URL_OFFLINE)) {
+                    sendBroadcast(new Intent(EVENT_OFFLINE));
+                    placeInfo.setText(local + "/" + "OFFLINE");
+                } else if (hasInternet) {
+                    sendBroadcast(new Intent(EVENT_ONLINE));
+                    placeInfo.setText(local + "/" + "ONLINE");
+                } else {
+                    sendBroadcast(new Intent(EVENT_CACHE));
+                    placeInfo.setText(local + "/" + "CACHE");
+                }
             }
+
             @Override
-            public void onReceivedError (WebView view, int errorCode, String description, String failingUrl) {
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 Log.d(TAG, "Cannot load URL: [" + errorCode + "]: " + description);
-                Site.this.finish();
-                overridePendingTransition(0, 0);
+                Handler h = new Handler();
+                h.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        site.loadUrl(URL_OFFLINE);
+                    }
+                }, 0);
             }
         });
 
@@ -103,13 +136,12 @@ public class Site extends Activity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Received: " + intent.getAction());
-                Site.this.finish();
+                recreate();
                 overridePendingTransition(R.anim.fadein, R.anim.fadeout);
             }
         };
 
         sendBroadcast(new Intent(EVENT_UP));
-
 
         /* discovery my name */
         pref = new Preferences(this);
@@ -157,11 +189,10 @@ public class Site extends Activity {
         if (local == null) {
             return;
         }
+        this.local = local;
         String url = SITE_URL_BASE + local;
         loadURL(url);
 
-        TextView placeInfo = (TextView) findViewById(R.id.placeInfo);
-        placeInfo.setText(local);
     }
 
     public void loadURL(final String url) {
@@ -170,7 +201,6 @@ public class Site extends Activity {
         Thread checkURL = new Thread(new Runnable() {
             @Override
             public void run() {
-                final boolean hasInternet;
                 if (Util.checkURL(SITE_URL_BASE, 10000)) {
                     hasInternet = true;
                 } else {
@@ -217,7 +247,7 @@ public class Site extends Activity {
     public void onResume() {
         super.onResume();
         if (mReceiver != null) {
-            registerReceiver(mReceiver, new IntentFilter(Manager.REQUEST_KILL_SITE));
+            registerReceiver(mReceiver, new IntentFilter(KILL_SITE));
         }
 
         startAliveThread();
@@ -291,12 +321,31 @@ public class Site extends Activity {
             public void run() {
                 try {
                     Log.d(TAG, "Ping thread started");
+                    int onlineTimes = 0;
                     while (!isInterrupted()) {
                         String name;
                         if (pref != null && (name = pref.getName()) != null) {
                             String url = PING_URL_BASE + name;
-                            String status = Util.checkURL(url)?"online":"offline";
-                            Log.d(TAG, "Ping from url: '" + url + "': " + status);
+                            boolean isOnline = Util.checkURL(url);
+
+                            if (isOnline) {
+                                onlineTimes++;
+                            } else {
+                                onlineTimes = 0;
+                            }
+
+                            String statusString = isOnline ?"online":"offline";
+                            Log.d(TAG, "Ping from url: '" + url + "': " + statusString + "[" +
+                                onlineTimes + "]");
+                            if (! hasInternet && onlineTimes >= 2) {
+                                /* two times online, but showing cache, request refresh */
+                                Log.d(TAG, "two times online, but showing cache, request refresh");
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        sendBroadcast(new Intent(KILL_SITE));                                    }
+                                });
+                            }
                         }
                         Thread.sleep(PING_SECONDS * 1000);
                     }
