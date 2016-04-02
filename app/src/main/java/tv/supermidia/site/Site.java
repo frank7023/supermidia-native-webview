@@ -29,10 +29,11 @@ public class Site extends Activity {
     public static final String EVENT_DOWN = "tv.supermidia.site.event-site-down";
     public static final String EVENT_UP = "tv.supermidia.site.event-site-up";
     public static final String KILL_SITE = "tv.supermidia.site.request-kill-site";
-    public static final String SITE_URL_BASE = "http://www.supermidia.tv/";
-    public static final String PING_URL_BASE = "http://service.supermidia.tv/service/salva/";
+    public static final String SITE_URL_BASE = "http://tv.araripina.com.br/";
+    public static final String PING_URL_BASE = "http://tv.araripina.com.br/service/service/salva/";
     public static final int PING_SECONDS = 15 * 60; /* ping every 15 minutes */
     public static final String URL_OFFLINE = "file:///android_asset/www/offline.html";
+    public static final String URL_INSTAGRAM = "http://tv.araripina.com.br/hashtag/";
 
     private WebView site;
     private BroadcastReceiver mReceiver;
@@ -105,9 +106,10 @@ public class Site extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 /* animate */
-                site.startAnimation(animationFadeIn);
+                //site.startAnimation(animationFadeIn);
                 site.setVisibility(View.VISIBLE);
-                if (site.getUrl().contains(URL_OFFLINE)) {
+                String current = site.getUrl();
+                if (current != null && current.contains(URL_OFFLINE)) {
                     sendBroadcast(new Intent(EVENT_OFFLINE));
                     placeInfo.setText(local + "/" + "OFFLINE");
                 } else if (hasInternet) {
@@ -135,9 +137,23 @@ public class Site extends Activity {
         mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                Log.d(TAG, "Received: " + intent.getAction());
-                recreate();
-                overridePendingTransition(R.anim.fadein, R.anim.fadeout);
+                String action = intent.getAction();
+                Log.d(TAG, "Received: " + action);
+
+                if (action.compareTo(Site.KILL_SITE) == 0) {
+                    recreate();
+                    overridePendingTransition(R.anim.fadein, R.anim.fadeout);
+                } else if (action.compareTo(Site.SWITCH_SITE) == 0) {
+                    /* get current */
+                    String current = site.getUrl();
+                    if (current != null && !current.contains(URL_OFFLINE) ) {
+                        if (current.contains(URL_INSTAGRAM)) {
+                            loadUrlNormal();
+                        } else {
+                            loadUrlInstagram();
+                        }
+                    }
+                }
             }
         };
 
@@ -185,14 +201,22 @@ public class Site extends Activity {
         }
     }
 
+    private void loadUrlInstagram() {
+        String url = URL_INSTAGRAM;
+        loadURL(url);
+    }
+
     private void onHasLocal(String local) {
         if (local == null) {
             return;
         }
         this.local = local;
+        loadUrlNormal();
+    }
+
+    private void loadUrlNormal() {
         String url = SITE_URL_BASE + local;
         loadURL(url);
-
     }
 
     public void loadURL(final String url) {
@@ -218,7 +242,7 @@ public class Site extends Activity {
                         } else {
                             /* no internet, use cache */
                             Log.d(TAG, "Internet seems horrible, use cache only");
-                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ONLY);
                             webSettings.setBlockNetworkLoads(true);
                         }
                         site.loadUrl(url);
@@ -248,6 +272,7 @@ public class Site extends Activity {
         super.onResume();
         if (mReceiver != null) {
             registerReceiver(mReceiver, new IntentFilter(KILL_SITE));
+            registerReceiver(mReceiver, new IntentFilter(SWITCH_SITE));
         }
 
         startAliveThread();
@@ -343,7 +368,8 @@ public class Site extends Activity {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        sendBroadcast(new Intent(KILL_SITE));                                    }
+                                        sendBroadcast(new Intent(KILL_SITE));
+                                    }
                                 });
                             }
                         }

@@ -17,6 +17,7 @@ public class Manager extends Service {
     public static final String EVENT_DOWN = "tv.supermidia.site.event-manager-down";
     public static final int REFRESH_ONLINE_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours (if online)  */
     public static final int REFRESH_CACHE_SECONDS = 60 * 60 * 6; /* refresh site every 6 hours (if cache) */
+    public static final int REFRESH_SWITCH_SECONDS = 60 * 5; /* switch every 5 minutes (if online/cache)  */
     public static final int REFRESH_OFFLINE_SECONDS = 60 * 5; /* refresh site every 5 minutes (if offline) */
     public static final int REFRESH_CHECK_SECONDS = 5;
 
@@ -58,7 +59,6 @@ public class Manager extends Service {
                 } else if (action.compareTo(Site.EVENT_ONLINE) == 0) {
                     setSiteOnline();
                 }
-
             }
         };
         startThreads();
@@ -77,7 +77,6 @@ public class Manager extends Service {
             registerReceiver(mReceiver, new IntentFilter(Site.EVENT_OFFLINE));
             registerReceiver(mReceiver, new IntentFilter(Site.EVENT_ONLINE));
             registerReceiver(mReceiver, new IntentFilter(Site.EVENT_CACHE));
-
         }
         return START_STICKY;
         //return START_NOT_STICKY;
@@ -124,6 +123,10 @@ public class Manager extends Service {
     }
 
     private void startThreads() {
+        startThreadRefresh();
+    }
+
+    private void startThreadRefresh() {
         if (mThreadRefresh != null) {
             return;
         }
@@ -141,6 +144,7 @@ public class Manager extends Service {
                         secondsRunning += REFRESH_CHECK_SECONDS;
                         /* finish the site activity and start it again */
                         boolean refresh = false;
+                        boolean switch_ = false;
                         if (isSiteUp()) {
                             if (isSiteOffline() &&
                                  secondsRunning % REFRESH_OFFLINE_SECONDS < REFRESH_CHECK_SECONDS) {
@@ -150,13 +154,22 @@ public class Manager extends Service {
                                     secondsRunning % REFRESH_ONLINE_SECONDS < REFRESH_CHECK_SECONDS) {
                                 refresh = true;
                             }
-                            if (isSiteOffline() &&
-                                    secondsRunning % REFRESH_OFFLINE_SECONDS < REFRESH_CHECK_SECONDS) {
-                                refresh = true;
+//                            if (isSiteCache() &&
+//                                    secondsRunning % REFRESH_CACHE_SECONDS < REFRESH_CHECK_SECONDS) {
+//                                refresh = true;
+//                            }
+                            if ((isSiteOnline() || isSiteCache()) &&
+                                    secondsRunning % REFRESH_SWITCH_SECONDS < REFRESH_CHECK_SECONDS) {
+                                switch_ = true;
                             }
                             if (refresh) {
                                 Log.d(TAG, "It's time to refresh, so let's stop site");
                                 stopSite();
+                                continue;
+                            }
+                            if (switch_) {
+                                Log.d(TAG, "It's time to switch");
+                                switchSite();
                                 continue;
                             }
                         }
@@ -178,7 +191,16 @@ public class Manager extends Service {
         mThreadRefresh.start();
     }
 
+    private void switchSite() {
+        Intent i = new Intent(Site.SWITCH_SITE);
+        sendBroadcast(i);
+    }
+
     private void stopThreads() {
+        stopThreadRefresh();
+    }
+
+    private void stopThreadRefresh() {
         if (mThreadRefresh == null) {
             return;
         }
@@ -190,7 +212,6 @@ public class Manager extends Service {
             } catch (InterruptedException e) {
             }
         }
-
     }
 
     public synchronized boolean isSiteUp() {
