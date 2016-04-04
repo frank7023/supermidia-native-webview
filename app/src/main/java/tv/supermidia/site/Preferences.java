@@ -8,8 +8,10 @@ import android.content.SharedPreferences;
  */
 public class Preferences {
 
-    public static final String NAME = "tv.supermidia.site.PREFERENCES";
-    public static final String NAME_KEY = "NAME";
+    private static final String NAME = "tv.supermidia.site.PREFERENCES";
+    private static final String KEY_NAME = "NAME";
+    private static final String KEY_PLAYLIST = "PLAYLIST";
+
     private SharedPreferences sharedPref;
 
     public Preferences(Context c) {
@@ -21,11 +23,20 @@ public class Preferences {
 
     public void setName(String value) {
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString(NAME_KEY, value);
+        editor.putString(KEY_NAME, value);
         editor.commit();
     }
 
     public String getName() {
-        return sharedPref.getString(NAME_KEY, null);
+        return sharedPref.getString(KEY_NAME, null);
+    }
+
+    public void setPlaylist(String value) {
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString(KEY_PLAYLIST, value);
+        editor.commit();
+    }
+    public String getKeyPlaylist() {
+        return sharedPref.getString(KEY_PLAYLIST, null);
     }
 }

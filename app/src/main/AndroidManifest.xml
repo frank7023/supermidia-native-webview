@@ -8,23 +8,31 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name=".Site"
             android:label="@string/title_activity_site"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:process=":site"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" >
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
+            android:name=".Site">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <service
-            android:name=".Manager"
+            android:enabled="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:process=":messenger"
+            android:name=".MessengerService">
+        </service>
+        <service
             android:enabled="true"
             android:exported="true"
             android:launchMode="singleTop"
-            android:process=":manager">
+            android:process=":manager"
+            android:name=".Manager">
         </service>
+
         <receiver android:enabled="true" android:name="BootUpReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

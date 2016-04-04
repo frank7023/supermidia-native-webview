@@ -17,7 +17,7 @@ public class BootUpReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         Log.w(TAG, "Boot received");
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        PendingIntent pi = PendingIntent.getActivity(context, 0, new Intent(context, Site.class), PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pi = PendingIntent.getActivity(context, 0, new Intent(context, Manager.class), PendingIntent.FLAG_UPDATE_CURRENT);
         am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + INTERVAL, pi);
     }
 }

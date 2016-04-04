@@ -1,83 +1,178 @@
 package tv.supermidia.site;
 
 import android.app.Service;
-import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.wifi.WifiManager;
-import android.os.CountDownTimer;
+import android.content.ServiceConnection;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
 import android.util.Log;
 
+import com.android.volley.Cache;
+import com.android.volley.Network;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.BasicNetwork;
+import com.android.volley.toolbox.DiskBasedCache;
+import com.android.volley.toolbox.HurlStack;
+import com.android.volley.toolbox.JsonObjectRequest;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+
 public class Manager extends Service {
-    public static final String TAG = "SUPERMIDIA.TV:Manager";
+    private static final String TAG = "SUPERMIDIA.TV.Manager";
 
-    public static final String EVENT_UP = "tv.supermidia.site.event-manager-up";
-    public static final String EVENT_DOWN = "tv.supermidia.site.event-manager-down";
-    public static final int REFRESH_ONLINE_SECONDS = 60 * 60 * 2; /* refresh site every 2 hours (if online)  */
-    public static final int REFRESH_CACHE_SECONDS = 60 * 60 * 6; /* refresh site every 6 hours (if cache) */
-    public static final int REFRESH_SWITCH_SECONDS = 60 * 5; /* switch every 5 minutes (if online/cache)  */
-    public static final int REFRESH_OFFLINE_SECONDS = 60 * 5; /* refresh site every 5 minutes (if offline) */
-    public static final int REFRESH_CHECK_SECONDS = 5;
+    //private Thread mThreadSiteUp;
 
-    private WifiManager mWifiManager;
-    private Thread mThreadRefresh;
-    private BroadcastReceiver mReceiver;
+    /**
+     * Messenger for communicating with the service.
+     */
+    private Messenger mService = null;
 
-    private boolean siteUp = false;
+    /**
+     * Flag indicating whether we have called bind on the service.
+     */
+    private boolean mBound;
+    private RepeatTask mCheckSiteUp;
+    private String mLocal;
+    private RepeatTask mUpdatePlayList;
+    private Playlist mCurrentPlaylist;
+    private Playlist mCachePlaylist;
+    private boolean mIsPlaying = false;
+    RequestQueue mRequestQueue;
 
-    private boolean siteOffline = false;
-    private boolean siteOnline = false;
-    private boolean siteCache = false;
+    public static final String PLAYLIST_URL = "http://nifty-time-95518.appspot.com/api/playlist/%s";
 
-    private CountDownTimer siteUpCountdown;
+    HashMap<String, Boolean> mBlacklist = new HashMap<String, Boolean>();
+    private RepeatTask mPingTask;
 
-    public Manager() {
-        super();
-        //mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+    private void startManager() {
+        if (mCheckSiteUp == null) {
+            mCheckSiteUp = new RepeatTask(3000) {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(Manager.this, Site.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                }
+            };
+            mCheckSiteUp.start();
+        }
+        /* check for name */
+        if (mLocal == null) {
+            Preferences pref = new Preferences(this);
+            String name = pref.getName();
+            if (name == null) {
+                sendMessage(MessengerService.MSG_SITE_REQUEST_LOCAL);
+            } else {
+                sendMessage(MessengerService.MSG_SITE_GOT_LOCAL, name);
+            }
+        }
+
+        /* check for playlist */
+        if (mCurrentPlaylist == null) {
+            Preferences pref = new Preferences(this);
+            String saved = pref.getKeyPlaylist();
+            if (saved != null) {
+                gotPlaylist(saved);
+            }
+        }
+
+        if (mUpdatePlayList == null) {
+            mUpdatePlayList = new RepeatTask(30000) {
+                @Override
+                public void run() {
+                    if (mLocal != null) {
+//                    /* fake playlist */
+//                        String fake = "{\"id\": \"c\", \"playlist\": [{\"url\": \"http://tv.araripina.com.br/%s/\", \"duration\": 3600}], " +
+//                                "\"ping\": \"http://tv.araripina.com.br/service/service/salva/%s\", " +
+//                                "\"offline\": \"http://192.168.0.116:8080/content/offline.html\"}";
+//                        fake = String.format(fake, mLocal, mLocal);
+                        final String url = String.format(PLAYLIST_URL, mLocal);
+                        Log.d(TAG, String.format("Requesting playlist at %s'", url));
+                        JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                                (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+                                    @Override
+                                    public void onResponse(JSONObject response) {
+                                        Log.d(TAG, String.format("GOT playlist from %s: '%s'", url, response.toString()));
+                                        sendMessage(MessengerService.MSG_MANAGER_GOT_PLAYLIST, response.toString());
+                                    }
+                                }, new Response.ErrorListener() {
+                                    @Override
+                                    public void onErrorResponse(VolleyError error) {
+                                        Log.d(TAG, String.format("Cannot get playlist at %s", url));
+                                    }
+                                });
+                        mRequestQueue.add(jsObjRequest);
+                    }
+                }
+            };
+            mUpdatePlayList.start();
+        }
+
+        if (mPingTask == null) {
+            mPingTask = new RepeatTask(60 * 5 * 1000) {
+                @Override
+                public void run() {
+                    if (mCurrentPlaylist != null) {
+                        Thread ping = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (Util.checkURL(mCurrentPlaylist.ping, 10000)) {
+                                    Log.d(TAG, String.format("URL: %s is online", mCurrentPlaylist.ping));
+                                } else {
+                                    Log.d(TAG, String.format("URL: %s is offline", mCurrentPlaylist.ping));
+                                };
+                            }
+                        });
+                        ping.start();
+
+                    }
+                }
+            };
+            mPingTask.start();
+        }
     }
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        mReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-                //Log.d(TAG, "Received: " + action);
-                if (action.compareTo(Site.EVENT_UP) == 0 || action.compareTo(Site.EVENT_ALIVE) == 0) {
-                    setSiteUp(true);
-                } else if (action.compareTo(Site.EVENT_DOWN) == 0) {
-                    setSiteUp(false);
-                } else if (action.compareTo(Site.EVENT_CACHE) == 0) {
-                    setSiteCache();
-                } else if (action.compareTo(Site.EVENT_OFFLINE) == 0) {
-                    setSiteOffline();
-                } else if (action.compareTo(Site.EVENT_ONLINE) == 0) {
-                    setSiteOnline();
-                }
-            }
-        };
-        startThreads();
+    private void stopManager() {
+        if (mCheckSiteUp != null) {
+            mCheckSiteUp.stop();
+            mCheckSiteUp = null;
+        }
+        if (mUpdatePlayList != null) {
+            mUpdatePlayList.stop();
+            mUpdatePlayList = null;
+        }
+        if (mPingTask != null) {
+            mPingTask.stop();
+            mPingTask = null;
+        }
+//        mThreadSiteUp.interrupt();
+//        while (mThreadSiteUp != null) {
+//            try {
+//                mThreadSiteUp.join();
+//                mThreadSiteUp = null;
+//            } catch (InterruptedException e) {
+//            }
+//        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        super.onStartCommand(intent, flags, startId);
-        Log.d(TAG, "Manager service starting");
-        sendBroadcast(new Intent(EVENT_UP));
+        Log.d(TAG, "Manage service starting");
 
-        if (mReceiver != null) {
-            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_ALIVE));
-            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_UP));
-            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_DOWN));
-            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_OFFLINE));
-            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_ONLINE));
-            registerReceiver(mReceiver, new IntentFilter(Site.EVENT_CACHE));
-        }
+        Log.d(TAG, "Binding to MessengerService");
+        bindService(new Intent(this, MessengerService.class), mConnection,
+                Context.BIND_AUTO_CREATE);
+
         return START_STICKY;
         //return START_NOT_STICKY;
     }
@@ -91,190 +186,239 @@ public class Manager extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        if (mBound) {
+            Log.d(TAG, "Unbinding to MessengerService");
+            unbindService(mConnection);
+            mBound = false;
+        }
+
+        stopManager();
+        if (mRequestQueue != null) {
+            mRequestQueue.stop();
+        }
         Log.d(TAG, "Manage service stopping");
-        stopThreads();
-        sendBroadcast(new Intent(EVENT_DOWN));
-
-        if (mReceiver != null) {
-            unregisterReceiver(mReceiver);
-        }
     }
 
-    private void startSite() {
-        //Log.d(TAG, "Staring site");
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.d(TAG, "Manage service created");
+        /* start threads */
+        startManager();
 
-        Intent intent = new Intent(this, Site.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivity(intent);
+        // Instantiate the cache
+        Cache cache = new DiskBasedCache(getCacheDir(), 1024 * 1024); // 1MB cap
+
+        // Set up the network to use HttpURLConnection as the HTTP client.
+        Network network = new BasicNetwork(new HurlStack());
+
+        // Instantiate the RequestQueue with the cache and network.
+        mRequestQueue = new RequestQueue(cache, network);
+        mRequestQueue.start();
+
     }
 
-    private void stopSite() {
-        Intent i = new Intent(Site.KILL_SITE);
-        sendBroadcast(i);
-    }
-
-    private boolean hasWifi() {
-        if (mWifiManager == null) {
-            /* unknown state, assume offline */
-            return false;
-        }
-        return mWifiManager.isWifiEnabled();
-    }
-
-    private void startThreads() {
-        startThreadRefresh();
-    }
-
-    private void startThreadRefresh() {
-        if (mThreadRefresh != null) {
-            return;
-        }
-        mThreadRefresh = new Thread() {
-            @Override
-            public void run() {
-                long secondsRunning = 0;
-
-                try {
-                    Log.d(TAG, "thread  for refresh is started");
-                    while (!isInterrupted()) {
-                        Thread.sleep(1000 * REFRESH_CHECK_SECONDS);
-                        /* limit it to 24 hours */
-                        secondsRunning = secondsRunning >= 24 * 60 * 60 ? 0 : secondsRunning;
-                        secondsRunning += REFRESH_CHECK_SECONDS;
-                        /* finish the site activity and start it again */
-                        boolean refresh = false;
-                        boolean switch_ = false;
-                        if (isSiteUp()) {
-                            if (isSiteOffline() &&
-                                 secondsRunning % REFRESH_OFFLINE_SECONDS < REFRESH_CHECK_SECONDS) {
-                                refresh = true;
-                            }
-                            if (isSiteOnline() &&
-                                    secondsRunning % REFRESH_ONLINE_SECONDS < REFRESH_CHECK_SECONDS) {
-                                refresh = true;
-                            }
-//                            if (isSiteCache() &&
-//                                    secondsRunning % REFRESH_CACHE_SECONDS < REFRESH_CHECK_SECONDS) {
-//                                refresh = true;
-//                            }
-                            if ((isSiteOnline() || isSiteCache()) &&
-                                    secondsRunning % REFRESH_SWITCH_SECONDS < REFRESH_CHECK_SECONDS) {
-                                switch_ = true;
-                            }
-                            if (refresh) {
-                                Log.d(TAG, "It's time to refresh, so let's stop site");
-                                stopSite();
-                                continue;
-                            }
-                            if (switch_) {
-                                Log.d(TAG, "It's time to switch");
-                                switchSite();
-                                continue;
-                            }
+    class IncomingHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            String url;
+            //Log.d(TAG, String.format("Message received %s", msg));
+            switch (msg.what) {
+                case MessengerService.MSG_HAS_SITE:
+                    Log.d(TAG, "Site seems up");
+                    startManager();
+                    break;
+                case MessengerService.MSG_SITE_GOT_LOCAL:
+                    mLocal = msg.getData().getString(MessengerService.ARGUMENT_ONE);
+                    saveLocal();
+                    break;
+                case MessengerService.MSG_MANAGER_GOT_PLAYLIST:
+                    gotPlaylist(msg.getData().getString(MessengerService.ARGUMENT_ONE));
+                    break;
+                case MessengerService.MSG_SITE_FETCH_FAIL_OFFLINE:
+                    Log.d(TAG, String.format("Cannot fetch url %s on cache [offline]", msg.getData().getString(MessengerService.ARGUMENT_ONE)));
+                    fetchNextPlaylist();
+                    break;
+                case MessengerService.MSG_SITE_FETCH_FAIL:
+                    url = msg.getData().getString(MessengerService.ARGUMENT_ONE);
+                    Log.d(TAG, String.format("Cannot fetch url %s on cache", url));
+                    /* black list it */
+                    mBlacklist.put(url, true);
+                    fetchNextPlaylist();
+                    break;
+                case MessengerService.MSG_SITE_FETCH_OK:
+                    url = msg.getData().getString(MessengerService.ARGUMENT_ONE);
+                    Log.d(TAG, String.format("URL %s was fetched on cache", url));
+                    /* undo black list it */
+                    mBlacklist.remove(url);
+                    fetchNextPlaylist();
+                    break;
+                case MessengerService.MSG_SITE_SHOW_FAIL:
+                    Log.d(TAG, String.format("Cannot show %s", msg.getData().getString(MessengerService.ARGUMENT_ONE)));
+                    Handler h = new Handler();
+                    h.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            playNext();
                         }
-
-                        /* no reload */
-                        if (isSiteUp()) {
-                            /* continue to show site */
-                            continue;
-                        }
-                        Log.d(TAG, "Site is not running, starting it");
-                        startSite();
-
-                    }
-                } catch (InterruptedException e) {
-                }
-                Log.d(TAG, "thread for refresh was stopped");
-            }
-        };
-        mThreadRefresh.start();
-    }
-
-    private void switchSite() {
-        Intent i = new Intent(Site.SWITCH_SITE);
-        sendBroadcast(i);
-    }
-
-    private void stopThreads() {
-        stopThreadRefresh();
-    }
-
-    private void stopThreadRefresh() {
-        if (mThreadRefresh == null) {
-            return;
-        }
-        mThreadRefresh.interrupt();
-        while (mThreadRefresh != null) {
-            try {
-                mThreadRefresh.join();
-                mThreadRefresh = null;
-            } catch (InterruptedException e) {
+                    }, 5000);
+                    break;
+                case MessengerService.MSG_SITE_SHOW_OK:
+                    Log.d(TAG, String.format("Url %s is showing", msg.getData().getString(MessengerService.ARGUMENT_ONE)));
+                    playNextAfterCurrent();
+                    break;
+                default:
+                    super.handleMessage(msg);
             }
         }
     }
 
-    public synchronized boolean isSiteUp() {
-        return siteUp;
+    private void saveLocal() {
+        Preferences pref = new Preferences(this);
+        pref.setName(mLocal);
     }
 
-    public synchronized void setSiteUp(boolean siteUp) {
-        if (this.siteUp != siteUp) {
-            Log.d(TAG, "siteUp is now " + siteUp);
-        }
-        this.siteUp = siteUp;
+    private void gotPlaylist(String string) {
+        Playlist n = null;
+        try {
+            n = new Playlist(string);
 
-        if (siteUpCountdown != null) {
-            siteUpCountdown.cancel();
-            siteUpCountdown = null;
+        } catch (JSONException e) {
+            Log.w(TAG, String.format("Cannot decode playlist"), e);
+            return;
         }
 
-        if (siteUp == true) {
-            siteUpCountdown = new CountDownTimer(5000, 5000) {
-                public void onTick(long millisUntilFinished) {
+        if (mCachePlaylist == null) {
+            Log.d(TAG, String.format("Updating the playlist: have no caching playing"));
+            updatePlaylistTo(n);
+        } else if (n.id.compareTo(mCachePlaylist.id) != 0) {
+            Log.d(TAG, String.format("Updating the playlist: id changed"));
+            updatePlaylistTo(n);
+        } else if (n.timestamp - mCachePlaylist.timestamp > 2 * 60 * 60 * 1000) {
+            Log.d(TAG, String.format("Updating the playlist: previous is too old"));
+            updatePlaylistTo(n);
+        } else if (mIsPlaying == false) {
+            Log.d(TAG, String.format("Updating the playlist: not playing"));
+            updatePlaylistTo(n);
+        }
+//        if (mCurrentPlaylist == null) {
+//            mCurrentPlaylist = n;
+//        }
+
+    }
+
+    private void updatePlaylistTo(Playlist n) {
+        mCachePlaylist = n;
+        //fetchNextPlaylist();
+        /* fetch first offline */
+        sendMessage(MessengerService.MSG_SITE_SET_SPLASH_URL, n.offline);
+        sendMessage(MessengerService.MSG_SITE_FETCH_URL, n.offline);
+    }
+
+    private void fetchNextPlaylist() {
+        int oldIndex = mCachePlaylist.index;
+        final PlaylistItem i = mCachePlaylist.next();
+        int newIndex = mCachePlaylist.index;
+        if (newIndex > oldIndex) {
+            sendMessage(MessengerService.MSG_SITE_FETCH_URL, i.url);
+        } else if (i != null) {
+            Log.d(TAG, "Playlist was totally fetched");
+            /* the list was restarted: delay this fetch */
+            int duration = 10 * 60 * 1000;
+            Handler h = new Handler();
+            h.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    sendMessage(MessengerService.MSG_SITE_FETCH_URL, i.url);
                 }
+            }, duration);
 
-                public void onFinish() {
-                    siteUpCountdown = null;
-                    setSiteUp(false);
-                }
-            };
-            siteUpCountdown.start();
+            /* set current playlist and play it */
+            mCurrentPlaylist = mCachePlaylist.copy();
+            Preferences pref = new Preferences(this);
+            pref.setPlaylist(mCurrentPlaylist.raw);
+
+            if (mIsPlaying == false) {
+                playNext();
+            }
+            /* set the offline */
+            sendMessage(MessengerService.MSG_SITE_SET_SPLASH_URL, mCurrentPlaylist.offline);
+
         }
     }
 
-    public synchronized boolean isSiteOffline() {
-        return siteOffline;
+    private void playNext() {
+        final PlaylistItem i = mCurrentPlaylist.next();
+        if (i == null) {
+            return;
+        }
+        mIsPlaying = true;
+        if (mBlacklist.containsKey(i.url) == true) {
+            /* skip it */
+            Handler h = new Handler();
+            h.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    playNext();
+                }
+            }, 3000);
+        } else {
+            sendMessage(MessengerService.MSG_SITE_SHOW_URL, i.url);
+        }
     }
 
-    public synchronized void setSiteOffline() {
-        Log.d(TAG, "siteOffline is now true");
-        this.siteOffline = true;
-        this.siteOnline = false;
-        this.siteCache = false;
+    private void playNextAfterCurrent() {
+        final PlaylistItem i = mCachePlaylist.current();
+        if (i != null) {
+            Handler h = new Handler();
+            h.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    playNext();
+                }
+            }, i.duration * 1000);
+        }
     }
 
-    public synchronized boolean isSiteOnline() {
-        return siteOnline;
+    /**
+     * Target we publish for clients to send messages to IncomingHandler.
+     */
+    private final Messenger mMessenger = new Messenger(new IncomingHandler());
+    /**
+     * Class for interacting with the main interface of the service.
+     */
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            // This is called when the connection with the service has been
+            // established, giving us the object we can use to
+            // interact with the service.  We are communicating with the
+            // service using a Messenger, so here we get a client-side
+            // representation of that from the raw IBinder object.
+            mService = new Messenger(service);
+            Log.d(TAG, "Bound to MessengerService");
+            mBound = true;
+            sendMessage(MessengerService.MSG_REGISTER_MANAGER);
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            // This is called when the connection with the service has been
+            // unexpectedly disconnected -- that is, its process crashed.
+            mService = null;
+            mBound = false;
+            Log.d(TAG, "Unbound to MessengerService");
+
+        }
+    };
+
+    private void sendMessage(int msgKind, String msgValue) {
+        if (mBound) {
+            MessengerService.sendMessage(mService, msgKind, msgValue, mMessenger);
+        }
     }
 
-    public synchronized void setSiteOnline() {
-        Log.d(TAG, "siteOnline is now true");
-
-        this.siteOffline = false;
-        this.siteOnline = true;
-        this.siteCache = false;
+    private void sendMessage(int msgKind) {
+        sendMessage(msgKind, null);
     }
 
-    public synchronized boolean isSiteCache() {
-        return siteCache;
-    }
-
-    public synchronized void setSiteCache() {
-        Log.d(TAG, "siteCache is now true");
-
-        this.siteOffline = false;
-        this.siteOnline = false;
-        this.siteCache = true;
-    }
 }
