@@ -121,14 +121,14 @@ public class Manager extends Service {
         }
 
         if (mPingTask == null) {
-            mPingTask = new RepeatTask(60 * 5 * 1000) {
+            mPingTask = new RepeatTask(60 * 1 * 1000) {
                 @Override
                 public void run() {
                     if (mCurrentPlaylist != null) {
                         Thread ping = new Thread(new Runnable() {
                             @Override
                             public void run() {
-                                if (Util.checkURL(mCurrentPlaylist.ping, 10000)) {
+                                if (Util.checkURL(mCurrentPlaylist.ping, 3000)) {
                                     Log.d(TAG, String.format("URL: %s is online", mCurrentPlaylist.ping));
                                 } else {
                                     Log.d(TAG, String.format("URL: %s is offline", mCurrentPlaylist.ping));
@@ -136,7 +136,6 @@ public class Manager extends Service {
                             }
                         });
                         ping.start();
-
                     }
                 }
             };
