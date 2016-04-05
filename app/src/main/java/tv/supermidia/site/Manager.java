@@ -84,6 +84,8 @@ public class Manager extends Service {
             if (saved != null) {
                 gotPlaylist(saved);
             }
+        } else {
+            gotPlaylist(mCurrentPlaylist.raw);
         }
 
         if (mUpdatePlayList == null) {
@@ -227,6 +229,7 @@ public class Manager extends Service {
             switch (msg.what) {
                 case MessengerService.MSG_HAS_SITE:
                     Log.d(TAG, "Site seems up");
+                    mIsPlaying = false;
                     startManager();
                     break;
                 case MessengerService.MSG_SITE_GOT_LOCAL:
@@ -265,7 +268,7 @@ public class Manager extends Service {
                     }, 5000);
                     break;
                 case MessengerService.MSG_SITE_SHOW_OK:
-                    Log.d(TAG, String.format("Url %s is showing", msg.getData().getString(MessengerService.ARGUMENT_ONE)));
+                    Log.d(TAG, String.format("Url %s being showed", msg.getData().getString(MessengerService.ARGUMENT_ONE)));
                     playNextAfterCurrent();
                     break;
                 default:
@@ -290,7 +293,7 @@ public class Manager extends Service {
         }
 
         if (mCachePlaylist == null) {
-            Log.d(TAG, String.format("Updating the playlist: have no caching playing"));
+            Log.d(TAG, String.format("Updating the playlist: have no caching list"));
             updatePlaylistTo(n);
         } else if (n.id.compareTo(mCachePlaylist.id) != 0) {
             Log.d(TAG, String.format("Updating the playlist: id changed"));
@@ -357,6 +360,7 @@ public class Manager extends Service {
         if (mBlacklist.containsKey(i.url) == true) {
             /* skip it */
             Handler h = new Handler();
+            Log.d(TAG, String.format("URL %s was blacklisted, skipping it", i.url));
             h.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -364,6 +368,7 @@ public class Manager extends Service {
                 }
             }, 3000);
         } else {
+            Log.d(TAG, String.format("Showing %s", i.url));
             sendMessage(MessengerService.MSG_SITE_SHOW_URL, i.url);
         }
     }
@@ -372,6 +377,7 @@ public class Manager extends Service {
         final PlaylistItem i = mCachePlaylist.current();
         if (i != null) {
             Handler h = new Handler();
+            Log.d(TAG, String.format("Waiting %s seconds before show next url", i.duration));
             h.postDelayed(new Runnable() {
                 @Override
                 public void run() {
