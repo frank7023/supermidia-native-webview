@@ -29,11 +29,12 @@ public class Site extends Activity {
     public static final String EVENT_DOWN = "tv.supermidia.site.event-site-down";
     public static final String EVENT_UP = "tv.supermidia.site.event-site-up";
     public static final String KILL_SITE = "tv.supermidia.site.request-kill-site";
+    public static final String SWITCH_SITE = "tv.supermidia.site.request-switch-site";
     public static final String SITE_URL_BASE = "http://tv.araripina.com.br/";
     public static final String PING_URL_BASE = "http://tv.araripina.com.br/service/service/salva/";
     public static final int PING_SECONDS = 15 * 60; /* ping every 15 minutes */
     public static final String URL_OFFLINE = "file:///android_asset/www/offline.html";
-    public static final String URL_INSTAGRAM = "http://tv.araripina.com.br/hashtag/";
+    public static final String URL_INSTAGRAM = "https://nifty-time-95518.appspot.com/content/index.html";
 
     private WebView site;
     private BroadcastReceiver mReceiver;
